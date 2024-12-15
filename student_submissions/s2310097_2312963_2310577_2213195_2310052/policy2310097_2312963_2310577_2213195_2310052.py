@@ -4,7 +4,7 @@ import random
 import numpy as np
 from scipy.optimize import linprog
 
-class Policy2210xxx(Policy):
+class Policy2310097_2312963_2310577_2213195_2310052(Policy):
     def __init__(self, policy_id=1):
         assert policy_id in [1, 2], "Policy ID must be 1 or 2"
 
