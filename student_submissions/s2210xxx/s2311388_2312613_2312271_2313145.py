@@ -1,7 +1,6 @@
 from numpy import empty, stack
 import numpy
 from policy import Policy
-from collections import deque
 import numpy as np
 
 
@@ -22,7 +21,7 @@ class FirstFitDecreasing(Policy):
 
     def __init__(self):
         # Student code here
-        self.stack = deque()
+        self.stack = []
         self.stock_index = 0
         self.passed_list = []
 
@@ -349,3 +348,4 @@ class BestFitDecreasing(Policy):
                     next_smallest_stock_size = stock_size
                     next_smallest_stock_idx = i
         return next_smallest_stock_idx
+
