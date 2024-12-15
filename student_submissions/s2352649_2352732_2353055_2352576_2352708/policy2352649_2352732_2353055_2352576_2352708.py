@@ -6,14 +6,14 @@ class policy2352649_2352732_2353055_2352576_2352708(Policy):
     def __init__(self, policy_id=1):
         assert policy_id in [1, 2], "Policy ID must be 1 or 2"
         self.policy_id = policy_id
-        self.placements = []  # Store placements for each episode
-        self.last_printed_episode = None  # Keep track of printed episodes
-
+        self.placements = []  
+        self.last_printed_episode = None  
+        
     def get_action(self, observation, info):
         if self.policy_id == 1:
             return self._get_action_greedy(observation, info)
         elif self.policy_id == 2:
-            return self._get_action_policy2352649_2352732_2353055_2352576_2352708(observation, info)
+            return self._get_action_brute(observation, info)
     #grêdy
     def _get_action_greedy(self, observation, info):
         list_prods = observation["products"]
@@ -46,10 +46,31 @@ class policy2352649_2352732_2353055_2352576_2352708(Policy):
                     break
 
         return {"stock_idx": stock_idx, "size": prod_size, "position": (pos_x, pos_y)}
-    #pro cmmb
-    def _get_action_policy2352649_2352732_2353055_2352576_2352708(self, observation, info):
+    #du hoc duc 
+    def _get_action_brute(self, observation, info):
+        SMALL_PRODUCT_THRESHOLD = 5
+
+        small_products = [prod for prod in observation["products"] if prod["quantity"] > 0 and max(prod["size"]) <= SMALL_PRODUCT_THRESHOLD]
+        large_products = [prod for prod in observation["products"] if prod["quantity"] > 0 and max(prod["size"]) > SMALL_PRODUCT_THRESHOLD]
+
+        sorted_stocks = sorted(enumerate(observation["stocks"]), key=lambda x: self._get_stock_size_(x[1]))
+        for prod in small_products:
+            prod_size = prod["size"]
+            for rotation in [prod_size, prod_size[::-1]]:
+                prod_w, prod_h = rotation
+                for idx, stock in sorted_stocks:
+                    stock_w, stock_h = self._get_stock_size_(stock)
+                    if stock_w >= prod_w and stock_h >= prod_h:
+                        if self._can_place_(stock, (0, 0), rotation):
+                            return {"stock_idx": idx, "size": rotation, "position": (0, 0)}
+                        step_size = max(1, min(prod_w, prod_h) // 2)
+                        possible_positions = self._generate_candidate_positions(stock_w, stock_h, prod_w, prod_h, step_size)
+                        for x, y in possible_positions:
+                            if self._can_place_(stock, (x, y), rotation):
+                                return {"stock_idx": idx, "size": rotation, "position": (x, y)}
+
         list_prods = sorted(
-            [prod for prod in observation["products"] if prod["quantity"] > 0],
+            large_products,
             key=lambda p: (-max(p["size"]), -p["quantity"]),
         )
 
@@ -66,15 +87,13 @@ class policy2352649_2352732_2353055_2352576_2352708(Policy):
                 for rotation in [prod_size, prod_size[::-1]]:
                     prod_w, prod_h = rotation
                     if stock_w >= prod_w and stock_h >= prod_h:
-                        possible_positions = self._generate_candidate_positions(stock_w, stock_h, prod_w, prod_h)
+                        possible_positions = self._generate_candidate_positions(stock_w, stock_h, prod_w, prod_h, i)
                         for x, y in possible_positions:
                             if self._can_place_(stock, (x, y), rotation):
-                                waste = (
-                                    (stock_w * stock_h) - (prod_w * prod_h) - self._calculate_used_area_(stock)
-                                )
+                                waste = ((stock_w * stock_h) - (prod_w * prod_h) - self._calculate_used_area_(stock))
                                 if waste < best_waste:
                                     best_waste = waste
-                                    best_action = {"stock_idx": i, "size": rotation, "position": (x, y), }
+                                    best_action = {"stock_idx": i, "size": rotation, "position": (x, y),}
 
         if best_action:
             self.placements.append(best_action)
@@ -86,8 +105,8 @@ class policy2352649_2352732_2353055_2352576_2352708(Policy):
             self.last_printed_episode = info.get("episode")
 
         return best_action or {"stock_idx": -1, "size": [0, 0], "position": (0, 0)}
-    #nhảy cóc
-    def _generate_candidate_positions(self, stock_w, stock_h, prod_w, prod_h):
+
+    def _generate_candidate_positions(self, stock_w, stock_h, prod_w, prod_h, stock_idx):
         step_x = max(1, min(prod_w, prod_h) // 4)  
         step_y = max(1, min(prod_w, prod_h) // 4) 
         return [(x, y) for x in range(0, stock_w - prod_w + 1, step_x) for y in range(0, stock_h - prod_h + 1, step_y)]
@@ -104,10 +123,7 @@ class policy2352649_2352732_2353055_2352576_2352708(Policy):
         return None, None
 
     def _is_adjacent(self, stock, x, y, prod_w, prod_h):
-        adjacent_positions = [
-            (x - 1, y), (x + prod_w, y),  # Left, Right
-            (x, y - 1), (x, y + prod_h)   # Top, Bottom
-        ]
+        adjacent_positions = [ (x - 1, y), (x + prod_w, y), (x, y - 1), (x, y + prod_h) ]
         for adj_x, adj_y in adjacent_positions:
             if 0 <= adj_x < stock.shape[0] and 0 <= adj_y < stock.shape[1]:
                 if stock[adj_x, adj_y] != -1:
